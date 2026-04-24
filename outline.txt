@@ -1,0 +1,59 @@
+合肥地铁遍历项目 — 结构大纲
+================================
+
+一、项目定位
+------------
+基于 Django 的 Web 应用：读取合肥地铁站点与线路数据，构建图网络，提供全站遍历与两站最短路径规划；前端单页展示拓扑图、交互高亮与算法结果。
+
+二、根目录与配置
+--------------
+- manage.py：Django 入口，设置 DJANGO_SETTINGS_MODULE=subway_traversal.settings。
+- subway_traversal/：项目配置包。
+  - settings.py：数据库、静态文件、已安装应用等。
+  - urls.py：根 URL，挂载 traversal 应用路由。
+- station_coordinates_complete.txt：各线路站点及经纬度数据源。
+- line_color.txt：线路号与十六进制配色。
+- outputs/：运行生成的拓扑 PNG、路径报告、ZIP 包及 change_log.txt（计算任务日志）。
+- network1.py：独立脚本/参考实现（与 network 中 Kamada-Kawai 布局风格对齐）。
+- log.txt：本仓库根目录下的代码变更说明（由维护流程追加，非 Django 运行时日志）。
+
+三、核心 Python 模块
+-------------------
+1) network.py
+   - 数据：load_line_colors、load_station_data、build_subway_network。
+   - 布局：build_network1_layout（Kamada-Kawai，与 network1 一致）。
+   - 绘图：render_network_topology_image、render_planned_path_image（旧版风格）；
+     render_network1_topology_image、render_network1_planned_image（前端主用）；
+     内部 _draw_network1_style 负责灰度底图、交互高亮（起终点下拉/输入）、换乘站彩环与图例。
+
+2) traversal/algorithm.py
+   - SubwayAlgorithm：封装 NetworkX 图上的多种路径算法（贪心、DP、Dijkstra、BFS/DFS、遗传、蚁群等）、
+     最短路径、站点搜索、报告文本与分段（换乘）信息。
+
+3) traversal/views.py
+   - index：渲染主页模板。
+   - get_stations：站点关键字搜索 API。
+   - get_network：返回节点/边 JSON、归一化坐标、配色、线路站点表，并预生成缩略图与主拓扑 PNG。
+   - get_network_highlight：按查询参数生成交互预览拓扑图（较低 dpi 以加快响应）。
+   - calculate_path：POST 计算路径，写报告与图并打包 ZIP，追加 outputs/change_log.txt。
+   - compare_algorithms：多算法耗时对比。
+   - download_report / view_output_file：文件下载与内联预览。
+
+4) traversal/urls.py
+   - 将上述视图绑定到 /api/... 等路径。
+
+5) traversal/templates/traversal/index.html
+   - 单页 UI：算法与模式选择、起终点下拉与输入、热门起点、结果区、主图与缩略图、
+     拓扑悬停提示、高亮刷新与缩放控制。
+
+四、数据流简述
+--------------
+浏览器请求 /api/network/ → 后端加载站点与图、固定布局 → 返回 JSON 与文件名；
+交互时请求 /api/network/highlight/ → 按 d_sl/d_ss/d_el/d_es（下拉）与 m_s/m_e（输入框解析站名）
+生成预览图；计算时 POST /api/calculate/ → algorithm 求路径 → 写 outputs 并返回结果 JSON。
+
+五、依赖与运行
+--------------
+Python 虚拟环境 .venv 中含 Django、NetworkX、Matplotlib、NumPy、SciPy 等。本地开发：
+  python manage.py runserver
+浏览器访问根路径即可打开界面。

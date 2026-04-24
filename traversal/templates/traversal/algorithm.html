@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSP算法 - 地铁网络</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
+        .page { height: 100%; display: grid; grid-template-rows: 70px 1fr; gap: 10px; padding: 12px; }
+        .top {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+        }
+        .title { font-size: 20px; font-weight: 800; }
+        .nav a { text-decoration: none; color: #334155; margin-left: 12px; font-weight: 600; }
+        .container { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .hint {
+            position: absolute; right: 14px; top: 12px; z-index: 2;
+            background: rgba(255,255,255,.92); border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 6px 10px; font-size: 12px; color: #64748b;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header class="top">
+        <div class="title">基于非完全图的地铁网络TSP算法对比与可视化</div>
+        <div class="nav">
+            <a href="/">引导页</a>
+            <a href="/graph/">拓扑结构</a>
+        </div>
+    </header>
+    <section class="container">
+        <div class="hint">算法功能页（已应用浅色统一风格）</div>
+        <iframe id="algo-frame" src="/app/" title="TSP算法对比页面"></iframe>
+    </section>
+</div>
+<script>
+    const frame = document.getElementById('algo-frame');
+    frame.addEventListener('load', () => {
+        try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            if (!doc) return;
+            const style = doc.createElement('style');
+            style.textContent = `
+                body { background: #f8fafc !important; }
+                .control-panel {
+                    background: #ffffff !important;
+                    border-right: 1px solid #e2e8f0 !important;
+                    box-shadow: none !important;
+                }
+                .panel-header {
+                    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%) !important;
+                }
+                .map-stage {
+                    background: #ffffff !important;
+                    border: 1px solid #e2e8f0 !important;
+                    box-shadow: none !important;
+                }
+                .map-header {
+                    color: #0f172a !important;
+                    background: #f8fafc !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
+                }
+                .thumb-map { display: none !important; }
+                .main-map-wrap { background: #ffffff !important; }
+            `;
+            doc.head.appendChild(style);
+        } catch (e) {
+            console.warn('算法页样式注入失败:', e);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,1243 @@
+<!-- traversal/templates/traversal/index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合肥地铁全站点遍历系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+            background: radial-gradient(circle at 12% 10%, #1e293b 0%, #0f172a 45%, #020617 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .control-panel {
+            width: 360px;
+            background: rgba(15, 23, 42, 0.92);
+            border-right: 1px solid rgba(148, 163, 184, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 2px 0 16px rgba(0,0,0,0.25);
+        }
+
+        .map-panel {
+            flex: 1;
+            padding: 15px;
+            background: #f8f9fa;
+            overflow-y: auto;
+        }
+
+        .map-stage {
+            position: relative;
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+            min-height: 620px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+            font-weight: 600;
+            color: #dbeafe;
+            background: rgba(30, 41, 59, 0.6);
+        }
+
+        .main-map-wrap {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: #fafafa;
+        }
+
+        #planned-map-img {
+            transform-origin: center center;
+            display: block;
+            min-width: 100%;
+            min-height: 100%;
+            width: 100%;
+            height: auto;
+            cursor: crosshair;
+        }
+
+        .zoom-tools {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            z-index: 6;
+            display: flex;
+            gap: 8px;
+        }
+
+        .zoom-tools button {
+            border: 1px solid #d8d8d8;
+            background: rgba(255,255,255,0.95);
+            border-radius: 6px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .thumb-map {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            width: 220px;
+            height: 150px;
+            border: 2px solid #e3e3e3;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            z-index: 7;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .thumb-map:hover {
+            width: 520px;
+            height: 360px;
+            z-index: 10;
+        }
+
+        #original-map-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #fafafa;
+        }
+
+        .panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+            color: white;
+            text-align: center;
+            position: relative;
+        }
+
+        .panel-header h2 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .panel-header p {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .header-nav {
+            position: absolute;
+            right: 10px;
+            top: 8px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            border: 1px solid rgba(255,255,255,0.45);
+            color: #fff;
+            background: rgba(2, 6, 23, 0.22);
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .panel-content {
+            padding: 20px;
+            flex: 1;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .form-label i {
+            margin-right: 6px;
+            color: #667eea;
+        }
+
+        .station-input {
+            position: relative;
+        }
+
+        .station-input input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(148, 163, 184, 0.36);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            background: rgba(15, 23, 42, 0.75);
+            color: #e2e8f0;
+        }
+
+        .station-input input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .suggestion-item:hover {
+            background: #f0f0ff;
+        }
+
+        .algorithm-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .algo-option {
+            padding: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.32);
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+            color: #dbeafe;
+        }
+
+        .algo-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .algo-option.active {
+            background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+            border-color: #38bdf8;
+            color: white;
+        }
+
+        .algo-option i {
+            margin-right: 5px;
+        }
+
+        .btn-calculate {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        .btn-export {
+            width: 100%;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .btn-export:hover {
+            background: #218838;
+        }
+
+        .btn-clear {
+            width: 100%;
+            padding: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hot-stations {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .hot-tag {
+            padding: 6px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .hot-tag:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .result-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .result-stats {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85rem;
+        }
+
+        .segments-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .segment-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid;
+        }
+
+        .compare-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px dashed #d8d8d8;
+        }
+
+        .compare-table-wrap {
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid #e6e6e6;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .compare-table th {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 1;
+        }
+
+        .segment-line {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .segment-stations {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        #main-hover-tooltip {
+            z-index: 11;
+        }
+
+        .hover-tooltip {
+            position: absolute;
+            pointer-events: none;
+            z-index: 20;
+            min-width: 220px;
+            max-width: 320px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(2, 6, 23, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: #e2e8f0;
+            font-size: 0.76rem;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+        }
+
+        .color-chip {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 1200px) {
+            .thumb-map:hover {
+                width: 320px;
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="control-panel">
+            <div class="panel-header">
+                <div class="header-nav">
+                    <a href="/">引导页</a>
+                    <a href="/graph/">拓扑页</a>
+                </div>
+                <h2><i class="fas fa-subway"></i> 合肥地铁遍历系统</h2>
+                <p>全站点最优路径规划 | 共183个站点</p>
+            </div>
+
+            <div class="panel-content">
+                <div class="form-section">
+                    <label class="form-label"><i class="fas fa-map-marker-alt"></i> 起点站点</label>
+                    <div class="station-input">
+                        <input type="text" id="start-input" placeholder="请输入或选择起点站" autocomplete="off">
+                        <div id="start-suggestions" class="suggestions"></div>
+                    </div>
+                    <div class="algorithm-group" style="margin-top:8px;">
+                        <select id="start-line-select" class="form-select form-select-sm">
+                            <option value="">起点线路</option>
+                        </select>
+                        <select id="start-station-select" class="form-select form-select-sm">
+                            <option value="">起点站点</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label"><i class="fas fa-flag-checkered"></i> 终点站点</label>
+                    <div class="station-input">
+                        <input type="text" id="end-input" placeholder="可选；留空则自动回到起点" autocomplete="off">
+                        <div id="end-suggestions" class="suggestions"></div>
+                    </div>
+                    <div class="algorithm-group" style="margin-top:8px;">
+                        <select id="end-line-select" class="form-select form-select-sm">
+                            <option value="">终点线路</option>
+                        </select>
+                        <select id="end-station-select" class="form-select form-select-sm">
+                            <option value="">终点站点</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label"><i class="fas fa-brain"></i> 算法选择</label>
+                    <div class="algorithm-group">
+                        <div class="algo-option active" data-algo="greedy">
+                            <i class="fas fa-fast-forward"></i> 贪心算法
+                        </div>
+                        <div class="algo-option" data-algo="dynamic_programming">
+                            <i class="fas fa-project-diagram"></i> 动态规划
+                        </div>
+                        <div class="algo-option" data-algo="dijkstra">
+                            <i class="fas fa-bezier-curve"></i> Dijkstra
+                        </div>
+                        <div class="algo-option" data-algo="bfs">
+                            <i class="fas fa-stream"></i> 广度优先
+                        </div>
+                        <div class="algo-option" data-algo="dfs">
+                            <i class="fas fa-code-branch"></i> 深度优先
+                        </div>
+                        <div class="algo-option" data-algo="genetic">
+                            <i class="fas fa-dna"></i> 遗传算法
+                        </div>
+                        <div class="algo-option" data-algo="ant_colony">
+                            <i class="fas fa-bug"></i> 蚁群算法
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label"><i class="fas fa-tasks"></i> 功能模式</label>
+                    <div class="algorithm-group">
+                        <div class="algo-option active mode-option" data-mode="traversal">
+                            <i class="fas fa-route"></i> 全站遍历
+                        </div>
+                        <div class="algo-option mode-option" data-mode="shortest_path">
+                            <i class="fas fa-location-arrow"></i> 两站最短路
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-calculate" id="calculate-btn">
+                    <i class="fas fa-play"></i> 开始遍历
+                </button>
+                <button class="btn-export" id="export-btn" style="display:none;">
+                    <i class="fas fa-download"></i> 导出规划文件包
+                </button>
+                <button class="btn-clear" id="clear-btn">
+                    <i class="fas fa-trash"></i> 清除高亮
+                </button>
+                <button class="btn-export" id="compare-btn">
+                    <i class="fas fa-balance-scale"></i> 算法性能对比
+                </button>
+
+                <div class="form-section">
+                    <label class="form-label"><i class="fas fa-fire"></i> 热门起点</label>
+                    <div class="hot-stations" id="hot-stations"></div>
+                </div>
+
+                <div class="result-section" id="result-section" style="display:none;">
+                    <div class="result-title"><i class="fas fa-chart-line"></i> 遍历结果</div>
+                    <div class="result-stats" id="result-stats"></div>
+                    <div class="result-title"><i class="fas fa-exchange-alt"></i> 换乘分段</div>
+                    <div class="segments-list" id="segments-list"></div>
+                    <div class="compare-section" id="compare-section" style="display:none;">
+                        <div class="result-title"><i class="fas fa-balance-scale"></i> 算法性能对比</div>
+                        <div class="compare-table-wrap">
+                            <table class="compare-table">
+                                <thead>
+                                    <tr>
+                                        <th>算法</th>
+                                        <th>均值(秒)</th>
+                                        <th>最小(秒)</th>
+                                        <th>最大(秒)</th>
+                                        <th>波动(标准差)</th>
+                                        <th>独立站点</th>
+                                        <th>路径站点</th>
+                                        <th>总距离</th>
+                                        <th>换乘次数</th>
+                                        <th>完整遍历</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="compare-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-panel">
+            <div class="map-stage">
+                <div class="map-header">线路规划图（主视图）</div>
+                <div class="main-map-wrap" id="main-map-wrap">
+                    <div class="zoom-tools">
+                        <button id="zoom-in-btn" title="放大">+</button>
+                        <button id="zoom-out-btn" title="缩小">-</button>
+                        <button id="zoom-reset-btn" title="重置">1:1</button>
+                    </div>
+                    <img id="planned-map-img" alt="线路规划图" style="filter:grayscale(100%);">
+                    <div id="main-hover-tooltip" class="hover-tooltip"></div>
+                    <div class="thumb-map" title="悬停放大完整拓扑">
+                        <img id="original-map-img" alt="完整网络拓扑图">
+                        <div id="thumb-hover-tooltip" class="hover-tooltip"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color:#667eea;"></i>
+            <p class="mt-2 mb-0">正在计算最优路径...</p>
+        </div>
+    </div>
+
+    <script>
+        let networkData = null;
+        let selectedAlgorithm = 'greedy';
+        let selectedMode = 'traversal';
+        let latestBundleFile = null;
+        let lineStations = {};
+        let plannedScale = 1;
+        let highlightRequestId = 0;
+
+        const hotStations = ['合肥火车站', '合肥南站', '大东门', '三孝口', '西七里塘', '洪岗'];
+
+        function initHotStations() {
+            const container = document.getElementById('hot-stations');
+            container.innerHTML = '';
+            hotStations.forEach(station => {
+                const tag = document.createElement('div');
+                tag.className = 'hot-tag';
+                tag.innerHTML = `<i class="fas fa-train"></i> ${station}`;
+                tag.onclick = () => {
+                    document.getElementById('start-input').value = station;
+                    document.getElementById('start-input').focus();
+                    refreshTopologyHighlight();
+                };
+                container.appendChild(tag);
+            });
+        }
+
+        function initAlgorithmSelector() {
+            document.querySelectorAll('.algo-option[data-algo]').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.algo-option[data-algo]').forEach(node => node.classList.remove('active'));
+                    option.classList.add('active');
+                    selectedAlgorithm = option.dataset.algo;
+                });
+            });
+        }
+
+        function initModeSelector() {
+            document.querySelectorAll('.mode-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-option').forEach(node => node.classList.remove('active'));
+                    option.classList.add('active');
+                    selectedMode = option.dataset.mode;
+                    const endInput = document.getElementById('end-input');
+                    endInput.placeholder = selectedMode === 'shortest_path' ? '最短路径模式：必须选择终点站' : '可选；留空则自动回到起点';
+                });
+            });
+        }
+
+        function setImageSource(imgId, filename, grayscale = false) {
+            const img = document.getElementById(imgId);
+            img.src = `/api/file/${encodeURIComponent(filename)}?t=${Date.now()}`;
+            img.style.filter = grayscale ? 'grayscale(100%)' : 'none';
+        }
+
+        function restoreThumbnailTopology() {
+            if (networkData?.base_topology_file) {
+                setImageSource('original-map-img', networkData.base_topology_file, false);
+            }
+        }
+
+        function applyPlannedZoom() {
+            const img = document.getElementById('planned-map-img');
+            img.style.transform = `scale(${plannedScale})`;
+        }
+
+        function initPlannedZoom() {
+            const wrap = document.getElementById('main-map-wrap');
+            document.getElementById('zoom-in-btn').addEventListener('click', () => {
+                plannedScale = Math.min(4, plannedScale + 0.2);
+                applyPlannedZoom();
+            });
+            document.getElementById('zoom-out-btn').addEventListener('click', () => {
+                plannedScale = Math.max(0.6, plannedScale - 0.2);
+                applyPlannedZoom();
+            });
+            document.getElementById('zoom-reset-btn').addEventListener('click', () => {
+                plannedScale = 1;
+                applyPlannedZoom();
+                wrap.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+            });
+            wrap.addEventListener('wheel', (e) => {
+                if (!e.ctrlKey) return;
+                e.preventDefault();
+                plannedScale = e.deltaY < 0 ? Math.min(4, plannedScale + 0.1) : Math.max(0.6, plannedScale - 0.1);
+                applyPlannedZoom();
+            }, { passive: false });
+        }
+
+        function buildLineStationSelectors() {
+            lineStations = networkData.line_stations || {};
+            const lines = Object.keys(lineStations).sort((a, b) => Number(a) - Number(b));
+
+            const startLine = document.getElementById('start-line-select');
+            const endLine = document.getElementById('end-line-select');
+            startLine.innerHTML = '<option value="">起点线路</option>';
+            endLine.innerHTML = '<option value="">终点线路</option>';
+
+            lines.forEach(line => {
+                const label = `${line}号线`;
+                startLine.appendChild(new Option(label, line));
+                endLine.appendChild(new Option(label, line));
+            });
+        }
+
+        function fillStationSelect(lineSelectId, stationSelectId, placeholder) {
+            const line = document.getElementById(lineSelectId).value;
+            const stationSelect = document.getElementById(stationSelectId);
+            stationSelect.innerHTML = `<option value="">${placeholder}</option>`;
+            if (!line || !lineStations[line]) {
+                return;
+            }
+            lineStations[line].forEach(station => stationSelect.appendChild(new Option(station, station)));
+        }
+
+        function nearestTopologyEdge(px, py, nodeMap, edges) {
+            let best = null;
+            let bestDist = Number.POSITIVE_INFINITY;
+            edges.forEach(edge => {
+                const from = nodeMap[edge.from];
+                const to = nodeMap[edge.to];
+                if (!from || !to) return;
+                const vx = to.x - from.x;
+                const vy = to.y - from.y;
+                const wx = px - from.x;
+                const wy = py - from.y;
+                const c1 = vx * wx + vy * wy;
+                const c2 = vx * vx + vy * vy;
+                const t = c2 === 0 ? 0 : Math.max(0, Math.min(1, c1 / c2));
+                const projX = from.x + t * vx;
+                const projY = from.y + t * vy;
+                const dx = px - projX;
+                const dy = py - projY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = { edge, dist };
+                }
+            });
+            return best;
+        }
+
+        function nearestTopologyNode(rx, ry, nodes) {
+            let best = null;
+            let bestDist = Number.POSITIVE_INFINITY;
+            nodes.forEach(node => {
+                const d = Math.hypot(rx - node.x_norm, ry - node.y_norm);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = node;
+                }
+            });
+            return { node: best, dist: bestDist };
+        }
+
+        function formatHoverStationHtml(node) {
+            const lines = (node.lines || []).slice().sort((a, b) => Number(a) - Number(b));
+            if (!lines.length) {
+                return `<div>站点：${node.name}</div>`;
+            }
+            if (lines.length === 1) {
+                const ln = String(lines[0]);
+                const color = (networkData.line_colors && networkData.line_colors[ln]) || '#888888';
+                return `
+                    <div><span class="color-chip" style="background:${color};"></span><strong>${ln}号线</strong> <span style="opacity:.85">(${color})</span></div>
+                    <div>站点：${node.name}</div>`;
+            }
+            let html = `<div style="margin-bottom:6px;"><strong>${node.name}</strong> · 换乘站</div>`;
+            lines.forEach(ln => {
+                const s = String(ln);
+                const color = (networkData.line_colors && networkData.line_colors[s]) || '#888888';
+                html += `
+                    <div style="margin-top:4px;"><span class="color-chip" style="background:${color};"></span><strong>${s}号线</strong> <span style="opacity:.82">(${color})</span></div>
+                    <div style="padding-left:16px;opacity:.92;">该线站名：${node.name}</div>`;
+            });
+            return html;
+        }
+
+        function bindTopologyMapHover(img, tooltip, container) {
+            if (!img || !tooltip) return;
+            img.addEventListener('mousemove', (e) => {
+                if (!networkData?.nodes?.length) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                const rect = img.getBoundingClientRect();
+                const rx = (e.clientX - rect.left) / rect.width;
+                const ry = (e.clientY - rect.top) / rect.height;
+                if (rx < 0 || ry < 0 || rx > 1 || ry > 1) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                const wrapRect = container ? container.getBoundingClientRect() : rect;
+                const tipX = e.clientX - wrapRect.left + 12;
+                const tipY = e.clientY - wrapRect.top + 12;
+
+                const nRes = nearestTopologyNode(rx, ry, networkData.nodes);
+                if (nRes.node && nRes.dist < 0.038) {
+                    tooltip.innerHTML = formatHoverStationHtml(nRes.node);
+                    tooltip.style.left = `${Math.max(8, Math.min(wrapRect.width - 260, tipX))}px`;
+                    tooltip.style.top = `${Math.max(8, Math.min(wrapRect.height - 120, tipY))}px`;
+                    tooltip.style.display = 'block';
+                    return;
+                }
+
+                const nodeMap = {};
+                networkData.nodes.forEach(node => {
+                    nodeMap[node.name] = { x: node.x_norm, y: node.y_norm };
+                });
+                const nearest = nearestTopologyEdge(rx, ry, nodeMap, networkData.edges || []);
+                if (!nearest || nearest.dist > 0.06) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                const edge = nearest.edge;
+                const lineNum = String(edge.line);
+                const color = (networkData.line_colors && networkData.line_colors[lineNum]) || '#888888';
+                tooltip.innerHTML = `
+                    <div><span class="color-chip" style="background:${color};"></span><strong>${lineNum}号线</strong> (${color})</div>
+                    <div>区间站点: ${edge.from} — ${edge.to}</div>
+                `;
+                tooltip.style.left = `${Math.max(8, Math.min(wrapRect.width - 260, tipX))}px`;
+                tooltip.style.top = `${Math.max(8, Math.min(wrapRect.height - 88, tipY))}px`;
+                tooltip.style.display = 'block';
+            });
+
+            img.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
+        }
+
+        async function refreshTopologyHighlight() {
+            if (!networkData?.main_topology_file) return;
+            const reqId = ++highlightRequestId;
+            const d_sl = document.getElementById('start-line-select').value.trim();
+            const d_ss = document.getElementById('start-station-select').value.trim();
+            const d_el = document.getElementById('end-line-select').value.trim();
+            const d_es = document.getElementById('end-station-select').value.trim();
+            const m_s = document.getElementById('start-input').value.trim();
+            const m_e = document.getElementById('end-input').value.trim();
+
+            if (!d_sl && !d_ss && !d_el && !d_es && !m_s && !m_e) {
+                setImageSource('planned-map-img', networkData.main_topology_file, true);
+                return;
+            }
+            try {
+                const q = new URLSearchParams();
+                if (d_sl) q.set('d_sl', d_sl);
+                if (d_ss) q.set('d_ss', d_ss);
+                if (d_el) q.set('d_el', d_el);
+                if (d_es) q.set('d_es', d_es);
+                if (m_s) q.set('m_s', m_s);
+                if (m_e) q.set('m_e', m_e);
+                const resp = await fetch(`/api/network/highlight/?${q.toString()}`);
+                const data = await resp.json();
+                if (reqId === highlightRequestId && data.file) {
+                    setImageSource('planned-map-img', data.file, false);
+                }
+            } catch (e) {
+                console.error('高亮图更新失败', e);
+            }
+        }
+
+        async function initMapImages() {
+            try {
+                const resp = await fetch('/api/network/');
+                networkData = await resp.json();
+                if (networkData.error) {
+                    alert(networkData.error);
+                    return;
+                }
+                buildLineStationSelectors();
+                setImageSource('original-map-img', networkData.base_topology_file, false);
+                setImageSource('planned-map-img', networkData.main_topology_file, true);
+                initPlannedZoom();
+                const thumbWrap = document.querySelector('.thumb-map');
+                bindTopologyMapHover(
+                    document.getElementById('original-map-img'),
+                    document.getElementById('thumb-hover-tooltip'),
+                    thumbWrap
+                );
+                bindTopologyMapHover(
+                    document.getElementById('planned-map-img'),
+                    document.getElementById('main-hover-tooltip'),
+                    document.getElementById('main-map-wrap')
+                );
+            } catch (error) {
+                console.error('拓扑图加载失败:', error);
+                alert('拓扑图加载失败，请检查服务日志');
+            }
+        }
+
+        function initSearchSuggestions(inputId, suggestionsId) {
+            const input = document.getElementById(inputId);
+            const suggestionsDiv = document.getElementById(suggestionsId);
+            let timeout;
+
+            input.addEventListener('input', (e) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(async () => {
+                    const keyword = e.target.value;
+                    if (keyword.length < 1) {
+                        suggestionsDiv.style.display = 'none';
+                        return;
+                    }
+                    try {
+                        const resp = await fetch(`/api/stations/?keyword=${encodeURIComponent(keyword)}`);
+                        const data = await resp.json();
+                        if (data.stations && data.stations.length > 0) {
+                            suggestionsDiv.innerHTML = '';
+                            data.stations.forEach(station => {
+                                const div = document.createElement('div');
+                                div.className = 'suggestion-item';
+                                div.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${station}`;
+                                div.onclick = () => {
+                                    input.value = station;
+                                    suggestionsDiv.style.display = 'none';
+                                    refreshTopologyHighlight();
+                                };
+                                suggestionsDiv.appendChild(div);
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('搜索失败:', error);
+                    }
+                }, 300);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!suggestionsDiv.contains(e.target) && e.target !== input) {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+        }
+
+        function clearHighlight() {
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('export-btn').style.display = 'none';
+            document.getElementById('compare-section').style.display = 'none';
+            document.getElementById('compare-table-body').innerHTML = '';
+            latestBundleFile = null;
+            if (networkData?.main_topology_file) {
+                document.getElementById('start-line-select').value = '';
+                document.getElementById('start-station-select').innerHTML = '<option value="">起点站点</option>';
+                document.getElementById('end-line-select').value = '';
+                document.getElementById('end-station-select').innerHTML = '<option value="">终点站点</option>';
+                setImageSource('planned-map-img', networkData.main_topology_file, true);
+                restoreThumbnailTopology();
+            }
+        }
+
+        function renderCompareRows(rows = []) {
+            const tbody = document.getElementById('compare-table-body');
+            const section = document.getElementById('compare-section');
+            tbody.innerHTML = '';
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${idx === 0 ? '🥇 ' : ''}${row.algorithm_label}</td>
+                    <td>${row.time_avg}</td>
+                    <td>${row.time_min}</td>
+                    <td>${row.time_max}</td>
+                    <td>${row.time_std}</td>
+                    <td>${row.unique_stations}</td>
+                    <td>${row.total_stations}</td>
+                    <td>${row.total_distance}</td>
+                    <td>${row.transfer_count}</td>
+                    <td>${row.is_complete ? '是' : '否'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            section.style.display = rows.length ? 'block' : 'none';
+        }
+
+        async function compareAlgorithms() {
+            const start = document.getElementById('start-input').value.trim();
+            const end = document.getElementById('end-input').value.trim();
+            if (!start) {
+                alert('请先填写起点站再进行算法对比');
+                return;
+            }
+            if (selectedMode !== 'traversal') {
+                alert('算法性能对比仅支持“全站遍历”模式');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const resp = await fetch('/api/compare/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ start, end, mode: selectedMode, rounds: 5 })
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    throw new Error(data.error || `HTTP ${resp.status}`);
+                }
+                renderCompareRows(data.rows || []);
+                document.getElementById('result-section').style.display = 'block';
+            } catch (error) {
+                console.error('算法对比失败:', error);
+                alert('算法对比失败: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayResult(result) {
+            const resultSection = document.getElementById('result-section');
+            const resultStats = document.getElementById('result-stats');
+            const segmentsList = document.getElementById('segments-list');
+
+            resultStats.innerHTML = `
+                <div class="stat-row">
+                    <span>起点站点:</span>
+                    <strong>${result.start_station}</strong>
+                </div>
+                <div class="stat-row">
+                    <span>终点站点:</span>
+                    <strong>${result.end_station}</strong>
+                </div>
+                <div class="stat-row">
+                    <span>算法名称:</span>
+                    <strong>${result.algorithm_label}</strong>
+                </div>
+                <div class="stat-row">
+                    <span>访问站点:</span>
+                    <strong>${result.unique_stations}/${networkData.total_stations}</strong>
+                </div>
+                <div class="stat-row">
+                    <span>路径长度:</span>
+                    <strong>${result.total_stations} 站</strong>
+                </div>
+                <div class="stat-row">
+                    <span>换乘次数:</span>
+                    <strong>${result.segments.length - 1} 次</strong>
+                </div>
+                <div class="stat-row">
+                    <span>总距离:</span>
+                    <strong>${result.total_distance}</strong>
+                </div>
+                <div class="stat-row">
+                    <span>计算耗时:</span>
+                    <strong>${result.time} 秒</strong>
+                </div>
+            `;
+
+            segmentsList.innerHTML = '';
+            result.segments.forEach(seg => {
+                const div = document.createElement('div');
+                div.className = 'segment-item';
+                div.style.borderLeftColor = seg.color;
+                div.innerHTML = `
+                    <div class="segment-line">
+                        <i class="fas fa-subway"></i>
+                        第${seg.id}段 · ${seg.line_name}
+                    </div>
+                    <div class="segment-stations">
+                        ${seg.start} → ${seg.end} (${seg.station_count}站)
+                    </div>
+                `;
+                segmentsList.appendChild(div);
+            });
+
+            resultSection.style.display = 'block';
+            document.getElementById('export-btn').style.display = 'block';
+        }
+
+        function downloadPathFile() {
+            if (!latestBundleFile) {
+                alert('没有可导出的路径数据');
+                return;
+            }
+            const a = document.createElement('a');
+            a.href = `/api/report/${encodeURIComponent(latestBundleFile)}/`;
+            a.download = latestBundleFile;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function calculatePath() {
+            const start = document.getElementById('start-input').value.trim();
+            const end = document.getElementById('end-input').value.trim();
+            if (!start) {
+                alert('请填写起点站名');
+                return;
+            }
+            if (selectedMode === 'shortest_path' && !end) {
+                alert('最短路径模式必须填写终点站');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+
+            try {
+                const resp = await fetch('/api/calculate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ start, end, algorithm: selectedAlgorithm, mode: selectedMode })
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${text.substring(0, 120)}`);
+                }
+
+                const result = await resp.json();
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+
+                latestBundleFile = result.bundle_file;
+                setImageSource('planned-map-img', result.planned_topology_file, false);
+                displayResult(result);
+            } catch (error) {
+                console.error('计算失败:', error);
+                alert('计算失败: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function clear() {
+            clearHighlight();
+            document.getElementById('start-input').value = '';
+            document.getElementById('end-input').value = '';
+            document.getElementById('end-line-select').value = '';
+            document.getElementById('end-station-select').innerHTML = '<option value="">终点站点</option>';
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('export-btn').style.display = 'none';
+            document.getElementById('compare-section').style.display = 'none';
+            clearHighlight();
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initHotStations();
+            initAlgorithmSelector();
+            initModeSelector();
+            initSearchSuggestions('start-input', 'start-suggestions');
+            initSearchSuggestions('end-input', 'end-suggestions');
+            await initMapImages();
+
+            document.getElementById('start-line-select').addEventListener('change', async () => {
+                fillStationSelect('start-line-select', 'start-station-select', '起点站点');
+                await refreshTopologyHighlight();
+            });
+            document.getElementById('start-station-select').addEventListener('change', async (e) => {
+                document.getElementById('start-input').value = e.target.value;
+                await refreshTopologyHighlight();
+            });
+            document.getElementById('end-line-select').addEventListener('change', async () => {
+                fillStationSelect('end-line-select', 'end-station-select', '终点站点');
+                await refreshTopologyHighlight();
+            });
+            document.getElementById('end-station-select').addEventListener('change', async (e) => {
+                document.getElementById('end-input').value = e.target.value;
+                await refreshTopologyHighlight();
+            });
+
+            // 起终点输入框手动输入/确认后：高亮对应站点（全彩路网 + 绿/红标记）
+            ['start-input', 'end-input'].forEach((id) => {
+                const el = document.getElementById(id);
+                el.addEventListener('change', () => refreshTopologyHighlight());
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') refreshTopologyHighlight();
+                });
+            });
+
+            document.getElementById('calculate-btn').addEventListener('click', calculatePath);
+            document.getElementById('clear-btn').addEventListener('click', clear);
+            document.getElementById('export-btn').addEventListener('click', downloadPathFile);
+            document.getElementById('compare-btn').addEventListener('click', compareAlgorithms);
+        });
+    </script>
+</body>
+</html>

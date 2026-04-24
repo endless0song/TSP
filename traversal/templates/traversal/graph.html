@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拓扑结构 - 地铁网络</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
+        .page { height: 100%; display: grid; grid-template-rows: 70px 1fr; gap: 10px; padding: 12px; }
+        .top {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+        }
+        .title { font-size: 20px; font-weight: 800; }
+        .nav a { text-decoration: none; color: #334155; margin-left: 12px; font-weight: 600; }
+        .wrap { display: grid; grid-template-columns: 1fr 320px; gap: 10px; min-height: 0; }
+        .map-box {
+            position: relative; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; padding: 8px;
+        }
+        .toolbar {
+            position: absolute; left: 18px; top: 16px; z-index: 4; display: flex; gap: 6px;
+        }
+        .toolbar button {
+            border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; width: 34px; height: 34px; cursor: pointer; font-weight: 700;
+        }
+        .main-wrap {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            border-radius: 8px;
+            position: relative;
+        }
+        .main-inner {
+            transform-origin: top left;
+            position: relative;
+            width: fit-content;
+            min-width: 100%;
+            min-height: 100%;
+        }
+        .main-topology { width: 100%; height: calc(100% - 2px); object-fit: contain; background: #fff; border-radius: 8px; display: block; }
+        .station-overlay {
+            position: absolute; inset: 0; pointer-events: none;
+        }
+        .station-dot {
+            position: absolute;
+            width: 12px; height: 12px; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid #fff;
+            box-shadow: 0 0 8px rgba(15, 23, 42, .35);
+        }
+        .mini-map {
+            position: absolute; right: 16px; top: 16px; width: 330px; height: 220px;
+            border-radius: 10px; overflow: hidden; border: 1px solid #cbd5e1; box-shadow: 0 10px 22px rgba(15,23,42,.12);
+            background: #fff; z-index: 2;
+        }
+        .legend-click-wrap {
+            position: absolute; right: 18px; top: 248px; width: 168px; z-index: 3;
+            border: 1px solid #e2e8f0; border-radius: 10px; background: rgba(255,255,255,.96);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, .12); max-height: 260px; overflow: auto;
+        }
+        .legend-click-head { font-size: 12px; font-weight: 700; color: #475569; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+        .legend-click-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+        .legend-click-item:hover { background: #f1f5f9; }
+        .mini-map iframe, .mini-map > div { width: 100% !important; height: 100% !important; }
+        .side {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: auto; padding: 12px;
+            display: grid; grid-template-rows: auto 1fr; gap: 10px;
+        }
+        .kpis { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .kpi { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; background: #f8fafc; }
+        .kpi .n { font-size: 12px; color: #64748b; }
+        .kpi .v { font-size: 20px; font-weight: 800; margin-top: 2px; }
+        .block-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; color: #334155; }
+        .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid #94a3b8; }
+        .transfer-list {
+            border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 8px; overflow: auto;
+        }
+        .transfer-item {
+            border: 1px solid #e2e8f0; border-radius: 7px; padding: 7px 8px; margin-bottom: 6px;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 12px;
+        }
+        .transfer-item:hover { background: #f8fafc; }
+        .tiny { font-size: 11px; color: #64748b; }
+        pre {
+            border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
+            padding: 10px; font-size: 12px; line-height: 1.5; overflow: auto; white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header class="top">
+        <div class="title">基于非完全图的地铁网络TSP算法对比与可视化</div>
+        <div class="nav">
+            <a href="/">引导页</a>
+            <a href="/algorithm/">TSP算法</a>
+        </div>
+    </header>
+
+    <section class="wrap">
+        <div class="map-box">
+            <div class="toolbar">
+                <button id="zoom-in" title="放大">+</button>
+                <button id="zoom-out" title="缩小">-</button>
+                <button id="zoom-reset" title="重置">1:1</button>
+            </div>
+            {% if error %}
+                <div style="padding:20px;color:#b91c1c;">{{ error }}</div>
+            {% else %}
+                <div class="main-wrap" id="main-wrap">
+                    <div class="main-inner" id="main-inner">
+                        <img class="main-topology" id="main-topology" src="/api/file/{{ topology_file|urlencode }}?t={% now 'U' %}" alt="地铁图拓扑结构">
+                        <div class="station-overlay" id="station-overlay"></div>
+                    </div>
+                </div>
+                <div class="mini-map">{{ mini_map_html|safe }}</div>
+                <div class="legend-click-wrap" id="legend-click-wrap">
+                    <div class="legend-click-head">线路图例（点击高亮）</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <aside class="side">
+            <div class="kpis">
+                <div class="kpi"><div class="n">节点数（站点）</div><div class="v">{{ node_count }}</div></div>
+                <div class="kpi"><div class="n">边数（站间连接）</div><div class="v">{{ edge_count }}</div></div>
+                <div class="kpi"><div class="n">线路数</div><div class="v">{{ line_count }}</div></div>
+            </div>
+
+            <div class="transfer-list">
+                <div class="block-title">换乘站点数据（点击高亮）</div>
+                <div class="tiny">只保留换乘站点交互；同一面板同时用于展示与触发。</div>
+                <div id="transfer-items" style="margin-top:8px;"></div>
+                <div class="transfer-item" data-transfer-clear="1" style="justify-content:center;font-weight:700;">清除换乘站高亮</div>
+            </div>
+        </aside>
+    </section>
+</div>
+<script>
+    const lineStationData = JSON.parse(`{{ line_station_json|escapejs }}`);
+    let networkData = null;
+    let scale = 1;
+    const mainInner = document.getElementById('main-inner');
+    const mainWrap = document.getElementById('main-wrap');
+    const overlay = document.getElementById('station-overlay');
+    const img = document.getElementById('main-topology');
+
+    function applyScale() {
+        mainInner.style.transform = `scale(${scale})`;
+    }
+    document.getElementById('zoom-in').addEventListener('click', () => { scale = Math.min(3.2, scale + 0.2); applyScale(); });
+    document.getElementById('zoom-out').addEventListener('click', () => { scale = Math.max(0.55, scale - 0.2); applyScale(); });
+    document.getElementById('zoom-reset').addEventListener('click', () => { scale = 1; applyScale(); mainWrap.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); });
+    mainWrap.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        scale = e.deltaY < 0 ? Math.min(3.2, scale + 0.1) : Math.max(0.55, scale - 0.1);
+        applyScale();
+    }, { passive: false });
+
+    async function refreshLineHighlight(lineNum = '') {
+        const q = new URLSearchParams();
+        if (lineNum) q.set('d_sl', lineNum);
+        const url = q.toString() ? `/api/network/highlight/?${q.toString()}` : '';
+        if (!lineNum) {
+            img.src = `/api/file/{{ topology_file|urlencode }}?t=${Date.now()}`;
+            return;
+        }
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.file) {
+            img.src = `/api/file/${encodeURIComponent(data.file)}?t=${Date.now()}`;
+        }
+    }
+
+    function buildLegend() {
+        const box = document.getElementById('legend-click-wrap');
+        const lines = Object.keys(lineStationData).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        lines.forEach(label => {
+            const lineNum = label.replace('号线', '');
+            const c = (networkData?.line_colors && networkData.line_colors[lineNum]) || '#94a3b8';
+            const row = document.createElement('div');
+            row.className = 'legend-click-item';
+            row.innerHTML = `<span class="swatch" style="background:${c}"></span><span>${label}</span>`;
+            row.addEventListener('click', () => refreshLineHighlight(lineNum));
+            box.appendChild(row);
+        });
+        const clearRow = document.createElement('div');
+        clearRow.className = 'legend-click-item';
+        clearRow.innerHTML = `<span class="swatch" style="background:#e2e8f0"></span><span>清除线路高亮</span>`;
+        clearRow.addEventListener('click', () => refreshLineHighlight(''));
+        box.appendChild(clearRow);
+    }
+
+    function stationDotHtml(node) {
+        const lines = (node.lines || []).map(v => String(v));
+        if (lines.length <= 1) {
+            const c = (networkData?.line_colors && networkData.line_colors[lines[0]]) || '#334155';
+            return `<div class="station-dot" style="background:${c};"></div>`;
+        }
+        const step = 360 / lines.length;
+        const parts = lines.map((ln, i) => {
+            const c = (networkData?.line_colors && networkData.line_colors[ln]) || '#334155';
+            return `${c} ${i * step}deg ${(i + 1) * step}deg`;
+        }).join(', ');
+        return `<div class="station-dot" style="background:conic-gradient(${parts});"></div>`;
+    }
+
+    function highlightTransferStation(nodeName = '') {
+        overlay.innerHTML = '';
+        if (!networkData?.nodes?.length || !nodeName) return;
+        const nodes = networkData.nodes.filter(n => n.name === nodeName && (n.lines || []).length > 1);
+        const frag = document.createDocumentFragment();
+        nodes.forEach(n => {
+            const host = document.createElement('div');
+            host.style.position = 'absolute';
+            host.style.left = `${n.x_norm * 100}%`;
+            host.style.top = `${n.y_norm * 100}%`;
+            host.innerHTML = stationDotHtml(n);
+            frag.appendChild(host);
+        });
+        overlay.appendChild(frag);
+    }
+
+    function buildTransferList() {
+        const host = document.getElementById('transfer-items');
+        const transferNodes = (networkData?.nodes || [])
+            .filter(n => (n.lines || []).length > 1)
+            .sort((a, b) => (a.lines.length - b.lines.length) || a.name.localeCompare(b.name, 'zh-Hans-CN'));
+        transferNodes.forEach(n => {
+            const lines = (n.lines || []).slice().sort((a, b) => Number(a) - Number(b)).join(' / ');
+            const item = document.createElement('div');
+            item.className = 'transfer-item';
+            item.innerHTML = `<span>${n.name}</span><span class="tiny">${lines}号线</span>`;
+            item.addEventListener('click', () => highlightTransferStation(n.name));
+            host.appendChild(item);
+        });
+    }
+
+    document.querySelector('[data-transfer-clear="1"]').addEventListener('click', () => {
+        overlay.innerHTML = '';
+    });
+
+    (async function init() {
+        const resp = await fetch('/api/network/');
+        networkData = await resp.json();
+        buildLegend();
+        buildTransferList();
+    })();
+</script>
+</body>
+</html>
